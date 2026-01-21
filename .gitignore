@@ -1,0 +1,6 @@
+.Trash-0/
+.ipynb_checkpoints/
+__pycache__/
+datasets/
+results/
+*.csv

@@ -1,0 +1,7 @@
+jupyterlab
+datasets
+pymilvus
+pymilvus[bulk_writer]
+nvidia-ml-py
+scikit-learn
+sentence-transformers
