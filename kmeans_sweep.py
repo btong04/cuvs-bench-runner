@@ -1,6 +1,8 @@
 import os
+import sys
 import re
 import glob
+import logging
 import numpy as np
 import struct
 import pandas as pd
@@ -278,6 +280,7 @@ if algorithm.startswith('faiss'):
     except:
         print('Failed to load data.')
 
+        data_loading_status = 'fail'
         pipeline_status['ingestion'] = 'fail'
         metadata = {
             'dataset': DATASET_NAME,
@@ -289,6 +292,8 @@ if algorithm.startswith('faiss'):
     
         # Write results to disk
         export_results(telem_store)
+
+        sys.exit(1)
         
 elif algorithm.startswith('cuvs'):
     import cuml
@@ -310,7 +315,8 @@ elif algorithm.startswith('cuvs'):
         # print('Mean of columns:', X_col_mean)
     except:
         print('Failed to load data.')
-        
+
+        data_loading_status = 'fail'
         pipeline_status['ingestion'] = 'fail'
         metadata = {
             'dataset': DATASET_NAME,
@@ -322,6 +328,8 @@ elif algorithm.startswith('cuvs'):
     
         # Write results to disk
         export_results(telem_store)
+
+        sys.exit(1)
         
 else:
     raise ValueError(f"Unknown algorithm type: '{algorithm}'.")
@@ -371,12 +379,15 @@ if apply_scaler:
         print(telem_scaler)
         scaler_status = 'pass'
     except:
+        scaler_status = 'fail'
         pipeline_status['scaler'] = 'fail'
         metadata['pipeline_status'] = pipeline_status
         telem_store.append(metadata)
 
         # Write results to disk
         export_results(telem_store)
+
+        sys.exit(1)
 else:
     telem_scaler = {}
     scaler_status = 'skip'
@@ -423,6 +434,8 @@ for n_clusters in k_values:
 
         # Write results to disk
         export_results(telem_store)
+
+        sys.exit(1)
 
     # Model prediction stage
     if training_status == 'pass':
@@ -480,3 +493,5 @@ for n_clusters in k_values:
 
             # Write results to disk
             export_results(telem_store)
+
+            sys.exit(1)
