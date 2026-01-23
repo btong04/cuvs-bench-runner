@@ -1,5 +1,6 @@
 .Trash-0/
 .ipynb_checkpoints/
+.venv
 __pycache__/
 datasets/
 results/

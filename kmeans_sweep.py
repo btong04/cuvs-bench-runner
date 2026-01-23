@@ -31,7 +31,7 @@ apply_scaler = args.apply_scaler
 max_iter = args.max_iter
 k_values = args.k_values
 
-print(f'Starting {algorithm} sweeps.... \n')
+print(f'Running {algorithm}. \n')
 
 # Parse k_value str into list of int
 k_values = list(map(int, re.findall(r"\d+", k_values)))
@@ -260,14 +260,14 @@ def export_results(telem_store):
     output_file = f'./results/{algorithm}_{DATASET_NAME}.csv'
     telem_store_df.to_csv(output_file, index=False)
     print()
-    
-    print('KMeans parameter sweep completed successfully.')
     print(f'Output written to {output_file}')
 
 # Start loading data
 data_loading_status = 'pass'
 telem_store = []
 pipeline_status = {}
+
+# Let all try - except go to "pass" to skip errors and continue grid search.
 
 print(f'Loading dataset: {DATASET_NAME}')
 if algorithm.startswith('faiss'):
@@ -278,7 +278,7 @@ if algorithm.startswith('faiss'):
     try:
         telem, X = load_bin(base_path, 'float32')
     except:
-        print('Failed to load data.')
+        print('** ERROR: failed to load data **')
 
         data_loading_status = 'fail'
         pipeline_status['ingestion'] = 'fail'
@@ -293,7 +293,7 @@ if algorithm.startswith('faiss'):
         # Write results to disk
         export_results(telem_store)
 
-        sys.exit(1)
+        pass
         
 elif algorithm.startswith('cuvs'):
     import cuml
@@ -314,7 +314,7 @@ elif algorithm.startswith('cuvs'):
         # X_col_mean = X[:,:10].mean(axis=0)
         # print('Mean of columns:', X_col_mean)
     except:
-        print('Failed to load data.')
+        print('** ERROR: failed to load data **')
 
         data_loading_status = 'fail'
         pipeline_status['ingestion'] = 'fail'
@@ -329,7 +329,7 @@ elif algorithm.startswith('cuvs'):
         # Write results to disk
         export_results(telem_store)
 
-        sys.exit(1)
+        pass
         
 else:
     raise ValueError(f"Unknown algorithm type: '{algorithm}'.")
@@ -361,137 +361,137 @@ if data_loading_status == 'pass':
         'label_counts': [], # Temp value
         'inertia_avg': -1 # Temp value
     }
-
-
-# Apply scaler
-if apply_scaler:
-    print('Applying scaling to dataset....')
-
-    try:
-        # Apply standard scaler:
-        # telem, X = scaler_fit_transform(X)
-        # telem_scaler = add_prefix(telem, 'standard_scaler_')
     
-        # Normalize L2 distance:
-        telem, X = scaler_l2_norm(X, hw_type)
-        telem_scaler = add_prefix(telem, 'scaler_')
-        
-        print(telem_scaler)
-        scaler_status = 'pass'
-    except:
-        scaler_status = 'fail'
-        pipeline_status['scaler'] = 'fail'
-        metadata['pipeline_status'] = pipeline_status
-        telem_store.append(metadata)
-
-        # Write results to disk
-        export_results(telem_store)
-
-        sys.exit(1)
-else:
-    telem_scaler = {}
-    scaler_status = 'skip'
+    # Apply scaler
+    if apply_scaler:
+        print('Applying scaling to dataset....')
     
-# Update pipeline status
-pipeline_status['scaling'] = scaler_status
-metadata['pipeline_status'] = pipeline_status
-
-
-# Issue when function runs faster than polling rate (0.25s). 
-# Need to slow function execution by adding an internal delay and reversing it. 
-time_delay = 0.25
-
-print()
-print(f'Starting {algorithm} parameter sweep....')
-
-for n_clusters in k_values:
-    training_status = 'pass'
-    metadata['n_clusters'] = n_clusters
-    
-    try:
-        print(f'n_clusters = {n_clusters}')
-        print(f'Training {algorithm} model....')
-        telem, kmeans_model = train_kmeans(X, n_clusters, algorithm, time_delay)
-        telem['duration_sec'] = telem['duration_sec'] - time_delay
-        telem_kmeans_train = add_prefix(telem, 'kmeans_train_')
-        print(telem_kmeans_train)
-        print()
-
-        # Update pipeline status
-        pipeline_status['training'] = training_status
-        metadata['pipeline_status'] = pipeline_status
-    except:
-        print('ERROR: failure encountered during model training.')
-        training_status = 'fail'
-
-        # Update pipeline status
-        pipeline_status['training'] = training_status
-        metadata['pipeline_status'] = pipeline_status
-
-        # Save partial results and skip prediction step
-        # telem_store.append(metadata | telem_load_data | telem_scaler)
-        telem_store.append(metadata | telem_load_data)
-
-        # Write results to disk
-        export_results(telem_store)
-
-        sys.exit(1)
-
-    # Model prediction stage
-    if training_status == 'pass':
-        print(f'Predicting {algorithm} cluster labels....')
-
         try:
-            telem, kmeans_result = predict_kmeans(kmeans_model, X, algorithm, time_delay)
-            telem['duration_sec'] = telem['duration_sec'] - time_delay
-            telem_kmeans_predict = add_prefix(telem, 'kmeans_predict_')
-            print(telem_kmeans_predict)
-            print()
+            # Apply standard scaler:
+            # telem, X = scaler_fit_transform(X)
+            # telem_scaler = add_prefix(telem, 'standard_scaler_')
         
-            # High memory usage for computing inertia. Skip computing for now. 
-            # Workaround for bug in cuvs_kmeans_balanced. Need to compute inertia externally.
-            # if algorithm == 'cuvs_kmeans_balanced':
-                # kmeans_result['inertia'] = cluster_cost(X, kmeans_model['centroids'])
-                
-            # Get cluster labels
-            labels = kmeans_result['labels']
-        
-            if algorithm.startswith('cuvs'):
-                # Convert labels to numpy
-                labels = cp.asnumpy(labels)
-                
-            # Count number of elements within each cluster
-            label_name, label_counts = np.unique(labels, return_counts=True)
+            # Normalize L2 distance:
+            telem, X = scaler_l2_norm(X, hw_type)
+            telem_scaler = add_prefix(telem, 'scaler_')
             
-            # Add extra metadata from prediction stage
-            metadata['label_counts'] = label_counts
-            metadata['inertia_avg'] = kmeans_result['inertia'] / n_rows
-
-            # Update pipeline status
-            pipeline_status['prediction'] = 'pass'
-            metadata['pipeline_status'] = pipeline_status
-            
-            # Accumulate telemetry
-            telem_current = metadata | telem_load_data | telem_scaler | telem_kmeans_train | telem_kmeans_predict
-            telem_store.append(telem_current)
-            print(telem_current)
-            print()
-
-            # Write results to disk
-            export_results(telem_store)
-            
+            print(telem_scaler)
+            scaler_status = 'pass'
         except:
-            print('ERROR: failure encountered during model prediction.')
-            
-            # Update pipeline status
-            pipeline_status['prediction'] = 'fail'
+            print('** ERROR: failed to scale data **')
+            scaler_status = 'fail'
+            pipeline_status['scaler'] = 'fail'
             metadata['pipeline_status'] = pipeline_status
-
-            # Accumulate telemetry
-            telem_current = metadata | telem_load_data | telem_scaler | telem_kmeans_train
-            telem_store.append(telem_current)
-
+            telem_store.append(metadata)
+    
             # Write results to disk
             export_results(telem_store)
+    
+            pass
+    else:
+        telem_scaler = {}
+        scaler_status = 'skip'
+        
+    # Update pipeline status
+    pipeline_status['scaling'] = scaler_status
+    metadata['pipeline_status'] = pipeline_status
 
-            sys.exit(1)
+
+    # Issue when function runs faster than polling rate (0.25s). 
+    # Need to slow function execution by adding an internal delay and reversing it. 
+    time_delay = 0.25
+    
+    print()
+    print(f'Starting {algorithm} parameter sweep....')
+    
+    for n_clusters in k_values:
+        training_status = 'pass'
+        metadata['n_clusters'] = n_clusters
+        
+        try:
+            print(f'n_clusters = {n_clusters}')
+            print(f'Training {algorithm} model....')
+            telem, kmeans_model = train_kmeans(X, n_clusters, algorithm, time_delay)
+            telem['duration_sec'] = telem['duration_sec'] - time_delay
+            telem_kmeans_train = add_prefix(telem, 'kmeans_train_')
+            print(telem_kmeans_train)
+            print()
+    
+            # Update pipeline status
+            pipeline_status['training'] = training_status
+            metadata['pipeline_status'] = pipeline_status
+        except:
+            print('** ERROR: failure encountered during model training **')
+            training_status = 'fail'
+    
+            # Update pipeline status
+            pipeline_status['training'] = training_status
+            metadata['pipeline_status'] = pipeline_status
+    
+            # Save partial results and skip prediction step
+            # telem_store.append(metadata | telem_load_data | telem_scaler)
+            telem_store.append(metadata | telem_load_data)
+    
+            # Write results to disk
+            export_results(telem_store)
+    
+            pass
+    
+        # Model prediction stage
+        if training_status == 'pass':
+            print(f'Predicting {algorithm} cluster labels....')
+    
+            try:
+                telem, kmeans_result = predict_kmeans(kmeans_model, X, algorithm, time_delay)
+                telem['duration_sec'] = telem['duration_sec'] - time_delay
+                telem_kmeans_predict = add_prefix(telem, 'kmeans_predict_')
+                print(telem_kmeans_predict)
+                print()
+            
+                # High memory usage for computing inertia. Skip computing for now. 
+                # Workaround for bug in cuvs_kmeans_balanced. Need to compute inertia externally.
+                # if algorithm == 'cuvs_kmeans_balanced':
+                    # kmeans_result['inertia'] = cluster_cost(X, kmeans_model['centroids'])
+                    
+                # Get cluster labels
+                labels = kmeans_result['labels']
+            
+                if algorithm.startswith('cuvs'):
+                    # Convert labels to numpy
+                    labels = cp.asnumpy(labels)
+                    
+                # Count number of elements within each cluster
+                label_name, label_counts = np.unique(labels, return_counts=True)
+                
+                # Add extra metadata from prediction stage
+                metadata['label_counts'] = label_counts
+                metadata['inertia_avg'] = kmeans_result['inertia'] / n_rows
+    
+                # Update pipeline status
+                pipeline_status['prediction'] = 'pass'
+                metadata['pipeline_status'] = pipeline_status
+                
+                # Accumulate telemetry
+                telem_current = metadata | telem_load_data | telem_scaler | telem_kmeans_train | telem_kmeans_predict
+                telem_store.append(telem_current)
+                print(telem_current)
+                print()
+    
+                # Write results to disk
+                export_results(telem_store)
+                
+            except:
+                print('** ERROR: failure encountered during model prediction **')
+                
+                # Update pipeline status
+                pipeline_status['prediction'] = 'fail'
+                metadata['pipeline_status'] = pipeline_status
+    
+                # Accumulate telemetry
+                telem_current = metadata | telem_load_data | telem_scaler | telem_kmeans_train
+                telem_store.append(telem_current)
+    
+                # Write results to disk
+                export_results(telem_store)
+    
+                pass
