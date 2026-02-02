@@ -222,7 +222,7 @@ def train_kmeans(X, n_clusters, algorithm, time_delay):
         # https://docs.rapids.ai/api/cuvs/nightly/python_api/cluster_kmeans/
         # Balanced k_means by setting hierarchical=True
         cuvs_kmeans_params = cuvs_kmeans.KMeansParams(n_clusters=n_clusters, 
-                                                      max_iter=None, **cuvs_kmeans_extra_params
+                                                      max_iter=max_iter, **cuvs_kmeans_extra_params
                                                      )
         
         # Train cuVS kmeans model:
