@@ -11,6 +11,6 @@ groups:
   test:
     build:
       M: [24]
-      efConstruction: [128]
+      efConstruction: [512]
     search:
-      ef: [40]
+      ef: [80]
