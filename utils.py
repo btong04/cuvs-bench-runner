@@ -109,5 +109,4 @@ def generate_cuvs_bench_run_cmd(DATASET_NAME, ALGORITHM, K, BATCH_SIZE, GROUP, S
 
     if SEARCH_ONLY:
         run_cmd = run_cmd + '--search'
-        
     return(run_cmd)
