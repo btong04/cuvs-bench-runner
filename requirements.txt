@@ -3,3 +3,4 @@ datasets
 nvidia-ml-py
 scikit-learn
 sentence-transformers
+papermill
