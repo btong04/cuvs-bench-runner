@@ -11,7 +11,17 @@ groups:
     search:
       itopk: [32, 64, 128, 256, 512]
       search_width: [1, 2, 4, 8, 16, 32, 64]
-      persistent: [false]
+  base_persistent:
+    build:
+      graph_degree: [32, 64, 96, 128]
+      intermediate_graph_degree: [32, 64, 96, 128]
+      graph_build_algo: ["NN_DESCENT"]
+    search:
+      itopk: [32, 64, 128, 256, 512]
+      search_width: [1, 2, 4, 8, 16, 32, 64]
+      persistent: [true]
+      algo: ["single_cta"]
+      query_memory_type: ["pinned"]
   test:
     build:
       graph_degree: [96]
