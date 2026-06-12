@@ -13,6 +13,9 @@ from tqdm import tqdm
 from functools import wraps
 import argparse
 
+# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION.
+# SPDX-License-Identifier: Apache-2.0
+
 parser = argparse.ArgumentParser(description="Script for benchmarking KMeans.")
 
 parser.add_argument('-dataset_name', type=str, default='miracl-fp32-1024d-1M', help="Dataset name.")
