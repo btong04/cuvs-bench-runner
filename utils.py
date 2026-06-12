@@ -8,6 +8,9 @@ import subprocess
 import time
 from tqdm import tqdm
 
+# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION.
+# SPDX-License-Identifier: Apache-2.0
+
 def monitor_resources(stop_event, log, hw_type='cpu'):
     """
     Monitor CPU and RAM usage every 1 second until stop_event is set.
