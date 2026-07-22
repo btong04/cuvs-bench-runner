@@ -4,3 +4,4 @@ nvidia-ml-py
 scikit-learn
 sentence-transformers
 papermill
+ipywidgets
